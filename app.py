@@ -1,34 +1,35 @@
 from flask import Flask, render_template, request, redirect
-import sqlite3
+from flask_mysqldb import MySQL
+import os
 
 app = Flask(__name__)
 
-# Function to get the latest message
-def get_latest_message():
-    conn = sqlite3.connect("messages.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT text FROM messages ORDER BY created_at DESC LIMIT 1")
-    message = cursor.fetchone()
-    conn.close()
-    return message[0] if message else "No message yet! Upload one."
+# MySQL configuration - replace with your Render credentials
+app.config['MYSQL_HOST'] = '193.39.187.202'  # Your host
+app.config['MYSQL_USER'] = 'u236_tQbKjxlgPq'  # Your username
+app.config['MYSQL_PASSWORD'] = 'FFiKOh^w7h7x7s9c.z=Pj0JC'  # Your password
+app.config['MYSQL_DB'] = 's236_DONOTTOUCH'  # Your database name
 
-# Homepage route
+mysql = MySQL(app)
+
+# Route to display the latest message
 @app.route("/")
 def home():
-    message = get_latest_message()
-    return render_template("index.html", message=message)
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM messages ORDER BY created_at DESC LIMIT 1")
+    message = cur.fetchone()
+    return render_template("index.html", message=message[1] if message else "No message yet!")
 
-# Upload page route
+# Route to upload a new message
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
-        message = request.form.get("message")
-        if message:
-            conn = sqlite3.connect("messages.db")
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO messages (text) VALUES (?)", (message,))
-            conn.commit()
-            conn.close()
+        message_text = request.form.get("message")
+        if message_text:
+            cur = mysql.connection.cursor()
+            cur.execute("INSERT INTO messages (text) VALUES (%s)", [message_text])
+            mysql.connection.commit()
+            cur.close()
         return redirect("/")
     return render_template("upload.html")
 
